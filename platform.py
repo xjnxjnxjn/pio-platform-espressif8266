@@ -19,8 +19,8 @@ class Espressif8266xjnPlatform(PlatformBase):
 
     def configure_default_packages(self, variables, targets):
         framework = variables.get("pioframework", [])
-        if "arduino" not in framework:
-            self.packages['toolchain-xtensa']['version'] = "~1.40802.0"
+#        if "arduino" not in framework:
+#            self.packages['toolchain-xtensa']['version'] = "~1.40802.0"
         if "buildfs" in targets:
             self.packages['tool-mkspiffs']['optional'] = False
             self.packages['tool-mklittlefs']['optional'] = False
