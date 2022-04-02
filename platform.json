@@ -17,7 +17,7 @@
     "type": "git",
     "url": "https://github.com/xjnxjnxjn/platform-espressif8266.git"
   },
-  "version": "3.2.0-xjn",
+  "version": "3.2.0-xjn.1",
   "frameworks": {
     "esp8266-rtos-sdk": {
       "package": "framework-esp8266-rtos-sdk",
