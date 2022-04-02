@@ -17,7 +17,9 @@
     "type": "git",
     "url": "https://github.com/xjnxjnxjn/platform-espressif8266.git"
   },
-  "version": "3.2.0-xjn.1",
+  "version": "3.2.0-xjn.2",
+  "packageRepositories": [
+  ],
   "frameworks": {
     "esp8266-rtos-sdk": {
       "package": "framework-esp8266-rtos-sdk",
@@ -35,10 +37,21 @@
     },
     "framework-esp8266-rtos-sdk": {
       "type": "framework",
-      "optional": true,
-      "owner": "platformio",
-      "version": ">=1.5.0-beta"
+      "version": "https://github.com/xjnxjnxjn/ESP8266_RTOS_SDK.git"
     },
+    "tool-cmake": {
+      "optional": true,
+      "version": "~3.16.0"
+    },
+    "tool-ninja": {
+      "optional": true,
+      "version": "^1.7.0"
+    },
+    "tool-mconf": {
+      "optional": true,
+      "version": "~1.4060000.0"
+    },
+    
     "tool-esptool": {
       "type": "uploader",
       "owner": "platformio",
