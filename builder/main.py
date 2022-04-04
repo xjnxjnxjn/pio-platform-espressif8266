@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable=redefined-outer-name
-
 import re
 import sys
-from os.path import join
+from os.path import isfile, join
 
-
-from SCons.Script import (COMMAND_LINE_TARGETS, AlwaysBuild,
-                          Builder, Default, DefaultEnvironment)
-from platformio import util
+from SCons.Script import (
+    ARGUMENTS, COMMAND_LINE_TARGETS, AlwaysBuild, Builder, Default,
+    DefaultEnvironment)
 
 #
 # Helpers
@@ -31,7 +28,16 @@ from platformio import util
 def _get_board_f_flash(env):
     frequency = env.subst("$BOARD_F_FLASH")
     frequency = str(frequency).replace("L", "")
-    return int(int(frequency) / 1000000)
+    return str(int(int(frequency) / 1000000)) + "m"
+
+
+def _get_board_flash_mode(env):
+    mode = env.subst("$BOARD_FLASH_MODE")
+    if mode == "qio":
+        return "dio"
+    elif mode == "qout":
+        return "dout"
+    return mode
 
 
 def _parse_size(value):
@@ -47,145 +53,133 @@ def _parse_size(value):
     return value
 
 
-@util.memoized()
-def _parse_ld_sizes(ldscript_path):
-    assert ldscript_path
-    result = {}
-    # get flash size from board's manifest
-    result['flash_size'] = int(env.BoardConfig().get("upload.maximum_size", 0))
-    # get flash size from LD script path
-    match = re.search(r"\.flash\.(\d+[mk]).*\.ld", ldscript_path)
-    if match:
-        result['flash_size'] = _parse_size(match.group(1))
+def _parse_partitions(env):
+    partitions_csv = env.subst("$PARTITIONS_TABLE_CSV")
+    if not isfile(partitions_csv):
+        sys.stderr.write("Could not find the file %s with partitions "
+                         "table.\n" % partitions_csv)
+        env.Exit(1)
+        return
 
-    appsize_re = re.compile(
-        r"irom0_0_seg\s*:.+len\s*=\s*(0x[\da-f]+)", flags=re.I)
-    filesystem_re = re.compile(
-        r"PROVIDE\s*\(\s*_%s_(\w+)\s*=\s*(0x[\da-f]+)\s*\)" % "FS"
-        if "arduino" in env.subst("$PIOFRAMEWORK")
-        else "SPIFFS",
-        flags=re.I,
-    )
-    with open(ldscript_path) as fp:
+    result = []
+    next_offset = 0
+    with open(partitions_csv) as fp:
         for line in fp.readlines():
             line = line.strip()
-            if not line or line.startswith("/*"):
+            if not line or line.startswith("#"):
                 continue
-            match = appsize_re.search(line)
-            if match:
-                result['app_size'] = _parse_size(match.group(1))
+            tokens = [t.strip() for t in line.split(",")]
+            if len(tokens) < 5:
                 continue
-            match = filesystem_re.search(line)
-            if match:
-                result['fs_%s' % match.group(1)] = _parse_size(
-                    match.group(2))
+            partition = {
+                "name": tokens[0],
+                "type": tokens[1],
+                "subtype": tokens[2],
+                "offset": tokens[3] or next_offset,
+                "size": tokens[4],
+                "flags": tokens[5] if len(tokens) > 5 else None
+            }
+            result.append(partition)
+            next_offset = (_parse_size(partition['offset']) +
+                           _parse_size(partition['size']))
     return result
 
 
-def _get_flash_size(env):
-    ldsizes = _parse_ld_sizes(env.GetActualLDScript())
-    if ldsizes['flash_size'] < 1048576:
-        return "%dK" % (ldsizes['flash_size'] / 1024)
-    return "%dM" % (ldsizes['flash_size'] / 1048576)
+def _update_max_upload_size(env):
+    if not env.get("PARTITIONS_TABLE_CSV"):
+        return
+    sizes = [
+        _parse_size(p['size']) for p in _parse_partitions(env)
+        if p['type'] in ("0", "app")
+    ]
+    if sizes:
+        board.update("upload.maximum_size", max(sizes))
 
 
-def fetch_fs_size(env):
-    ldsizes = _parse_ld_sizes(env.GetActualLDScript())
-    for key in ldsizes:
-        if key.startswith("fs_"):
-            env[key.upper()] = ldsizes[key]
-
-    assert all([
-        k in env
-        for k in ["FS_START", "FS_END", "FS_PAGE", "FS_BLOCK"]
-    ])
-
-    # esptool flash starts from 0
-    for k in ("FS_START", "FS_END"):
-        _value = 0
-        if env[k] < 0x40300000:
-            _value = env[k] & 0xFFFFF
-        elif env[k] < 0x411FB000:
-            _value = env[k] & 0xFFFFFF
-            _value -= 0x200000  # correction
-        else:
-            _value = env[k] & 0xFFFFFF
-            _value += 0xE00000  # correction
-
-        env[k] = _value
+def _to_unix_slashes(path):
+    return path.replace('\\', '/')
 
 
-def __fetch_fs_size(target, source, env):
-    fetch_fs_size(env)
+#
+# SPIFFS helpers
+#
+
+
+def fetch_spiffs_size(env):
+    spiffs = None
+    for p in _parse_partitions(env):
+        if p['type'] == "data" and p['subtype'] == "spiffs":
+            spiffs = p
+    if not spiffs:
+        sys.stderr.write(
+            env.subst("Could not find the `spiffs` section in the partitions "
+                      "table $PARTITIONS_TABLE_CSV\n"))
+        env.Exit(1)
+        return
+    env["SPIFFS_START"] = _parse_size(spiffs['offset'])
+    env["SPIFFS_SIZE"] = _parse_size(spiffs['size'])
+    env["SPIFFS_PAGE"] = int("0x100", 16)
+    env["SPIFFS_BLOCK"] = int("0x1000", 16)
+
+
+def __fetch_spiffs_size(target, source, env):
+    fetch_spiffs_size(env)
     return (target, source)
 
-
-def _update_max_upload_size(env):
-    ldsizes = _parse_ld_sizes(env.GetActualLDScript())
-    if ldsizes and "app_size" in ldsizes:
-        env.BoardConfig().update("upload.maximum_size", ldsizes['app_size'])
-
-
-def get_esptoolpy_reset_flags(resetmethod):
-    # no dtr, no_sync
-    resets = ("no_reset_no_sync", "soft_reset")
-    if resetmethod == "nodemcu":
-        # dtr
-        resets = ("default_reset", "hard_reset")
-    elif resetmethod == "ck":
-        # no dtr
-        resets = ("no_reset", "soft_reset")
-
-    return ["--before", resets[0], "--after", resets[1]]
-
-
-########################################################
 
 env = DefaultEnvironment()
 env.SConscript("compat.py", exports="env")
 platform = env.PioPlatform()
 board = env.BoardConfig()
-filesystem = board.get("build.filesystem", "spiffs")
+mcu = board.get("build.mcu", "esp8266")
+FRAMEWORK_NAME = "framework-"+env.subst('$PIOFRAMEWORK')
+FRAMEWORK_DIR = platform.get_package_dir(FRAMEWORK_NAME)
+env.Replace(FRAMEWORK_DIR=FRAMEWORK_DIR)
 
 env.Replace(
-    __get_flash_size=_get_flash_size,
     __get_board_f_flash=_get_board_f_flash,
+    __get_board_flash_mode=_get_board_flash_mode,
+
+#    AR="xtensa-%s-elf-ar" % mcu,
+#    AS="xtensa-%s-elf-as" % mcu,
+#    CC="xtensa-%s-elf-gcc" % mcu,
+#    CXX="xtensa-%s-elf-g++" % mcu,
+#    GDB="xtensa-%s-elf-gdb" % mcu,
+#    OBJCOPY=join(
+#        platform.get_package_dir("tool-esptoolpy") or "", "esptool.py"),
+#    RANLIB="xtensa-%s-elf-ranlib" % mcu,
+#    SIZETOOL="xtensa-%s-elf-size" % mcu,
 
     AR="xtensa-lx106-elf-ar",
     AS="xtensa-lx106-elf-as",
     CC="xtensa-lx106-elf-gcc",
     CXX="xtensa-lx106-elf-g++",
     GDB="xtensa-lx106-elf-gdb",
-    OBJCOPY="xtensa-lx106-elf-objcopy",
+#    OBJCOPY=join(platform.get_package_dir("tool-esptoolpy"), "esptool.py"),
+    OBJCOPY=join("$FRAMEWORK_DIR", "components", "esptool_py", "esptool", "esptool.py"), #"xtensa-lx106-elf-objcopy",
     RANLIB="xtensa-lx106-elf-ranlib",
     SIZETOOL="xtensa-lx106-elf-size",
+#    ESPTOOL=join(platform.get_package_dir("tool-esptoolpy"), "esptool.py"),
+    ESPTOOL=join("$FRAMEWORK_DIR", "components", "esptool_py", "esptool", "esptool.py"),
+
+    PARTTOOL=join("$FRAMEWORK_DIR", "components", "partition_table", "parttool.py"),
 
     ARFLAGS=["rc"],
 
-    #
-    # Filesystem
-    #
-
-    MKFSTOOL="mk%s" % filesystem,
-    ESP8266_FS_IMAGE_NAME=env.get("ESP8266_FS_IMAGE_NAME", env.get(
-        "SPIFFSNAME", filesystem)),
-
-    #
-    # Misc
-    #
-
-    SIZEPROGREGEXP=r"^(?:\.irom0\.text|\.text|\.text1|\.data|\.rodata|)\s+([0-9]+).*",
-    SIZEDATAREGEXP=r"^(?:\.data|\.rodata|\.bss)\s+([0-9]+).*",
+    SIZEPROGREGEXP=r"^(?:\.iram0\.text|\.iram0\.vectors|\.dram0\.data|\.flash\.text|\.flash\.rodata|)\s+([0-9]+).*",
+    SIZEDATAREGEXP=r"^(?:\.dram0\.data|\.dram0\.bss|\.noinit)\s+([0-9]+).*",
     SIZECHECKCMD="$SIZETOOL -A -d $SOURCES",
-    SIZEPRINTCMD='$SIZETOOL -B -d $SOURCES',
+    SIZEPRINTCMD="$SIZETOOL -B -d $SOURCES",
 
     ERASEFLAGS=[
-        "--chip", "esp8266",
+        "--chip", mcu,
         "--port", '"$UPLOAD_PORT"'
     ],
-    ERASETOOL=join(
-        platform.get_package_dir("tool-esptoolpy") or "", "esptool.py"),
-    ERASECMD='"$PYTHONEXE" "$ERASETOOL" $ERASEFLAGS erase_flash',
+    ERASECMD='"$PYTHONEXE" "$OBJCOPY" $ERASEFLAGS erase_flash',
+
+    MKSPIFFSTOOL="mkspiffs_${PIOPLATFORM}_" + ("espidf" if "espidf" in env.subst(
+        "$PIOFRAMEWORK") else "${PIOFRAMEWORK}"),
+    ESP32_SPIFFS_IMAGE_NAME=env.get("ESP32_SPIFFS_IMAGE_NAME", "spiffs"),
 
     PROGSUFFIX=".elf"
 )
@@ -194,61 +188,66 @@ env.Replace(
 if env.get("PROGNAME", "program") == "program":
     env.Replace(PROGNAME="firmware")
 
-#
-# Keep support for old LD Scripts
-#
-
-env.Replace(BUILD_FLAGS=[
-    f.replace("esp8266.flash", "eagle.flash") if "esp8266.flash" in f else f
-    for f in env.get("BUILD_FLAGS", [])
-])
-
 env.Append(
+    # copy CCFLAGS to ASFLAGS (-x assembler-with-cpp mode)
+    ASFLAGS=env.get("CCFLAGS", [])[:],
+
     BUILDERS=dict(
+        ElfToBin=Builder(
+            action=env.VerboseAction(" ".join([
+                '"$PYTHONEXE" "$OBJCOPY"',
+                "--chip", mcu,
+                "elf2image",
+                "--version", "3",
+                "--flash_mode", "$BOARD_FLASH_MODE",
+                "--flash_freq", "${__get_board_f_flash(__env__)}",
+                "--flash_size", board.get("upload.flash_size", "4MB"), #"detect"),
+                "-o", "$TARGET", "$SOURCES"
+            ]), "Building $TARGET"),
+            suffix=".bin"
+        ),
         DataToBin=Builder(
             action=env.VerboseAction(" ".join([
-                '"$MKFSTOOL"',
+                '"$MKSPIFFSTOOL"',
                 "-c", "$SOURCES",
-                "-p", "$FS_PAGE",
-                "-b", "$FS_BLOCK",
-                "-s", "${FS_END - FS_START}",
+                "-p", "$SPIFFS_PAGE",
+                "-b", "$SPIFFS_BLOCK",
+                "-s", "$SPIFFS_SIZE",
                 "$TARGET"
-            ]), "Building file system image from '$SOURCES' directory to $TARGET"),
-            emitter=__fetch_fs_size,
+            ]), "Building SPIFFS image from '$SOURCES' directory to $TARGET"),
+            emitter=__fetch_spiffs_size,
             source_factory=env.Dir,
             suffix=".bin"
         )
     )
 )
 
+if not env.get("PIOFRAMEWORK"):
+    env.SConscript("frameworks/_bare.py", exports="env")
 
 #
-# Target: Build executable and linkable firmware or file system image
+# Target: Build executable and linkable firmware or SPIFFS image
 #
 
 target_elf = None
 if "nobuild" in COMMAND_LINE_TARGETS:
     target_elf = join("$BUILD_DIR", "${PROGNAME}.elf")
     if set(["uploadfs", "uploadfsota"]) & set(COMMAND_LINE_TARGETS):
-        fetch_fs_size(env)
-        target_firm = join("$BUILD_DIR", "${ESP8266_FS_IMAGE_NAME}.bin")
+        fetch_spiffs_size(env)
+        target_firm = join("$BUILD_DIR", "${ESP32_SPIFFS_IMAGE_NAME}.bin")
     else:
         target_firm = join("$BUILD_DIR", "${PROGNAME}.bin")
 else:
     target_elf = env.BuildProgram()
     if set(["buildfs", "uploadfs", "uploadfsota"]) & set(COMMAND_LINE_TARGETS):
-        if filesystem not in ("littlefs", "spiffs"):
-            sys.stderr.write("Filesystem %s is not supported!\n" % filesystem)
-            env.Exit(1)
         target_firm = env.DataToBin(
-            join("$BUILD_DIR", "${ESP8266_FS_IMAGE_NAME}"), "$PROJECT_DATA_DIR")
+            join("$BUILD_DIR", "${ESP32_SPIFFS_IMAGE_NAME}"), "$PROJECTDATA_DIR")
         AlwaysBuild(target_firm)
     else:
         target_firm = env.ElfToBin(
             join("$BUILD_DIR", "${PROGNAME}"), target_elf)
-        env.Depends(target_firm, "checkprogsize")
 
-env.AddPlatformTarget("buildfs", target_firm, target_firm, "Build Filesystem Image")
+env.AddPlatformTarget("buildfs", target_firm, None, "Build Filesystem Image")
 AlwaysBuild(env.Alias("nobuild", target_firm))
 target_buildprog = env.Alias("buildprog", target_firm, target_firm)
 
@@ -258,7 +257,7 @@ if env.get("PIOMAINPROG"):
         "checkprogsize",
         env.VerboseAction(
             lambda source, target, env: _update_max_upload_size(env),
-            "Retrieving maximum program size $SOURCE"))
+            "Retrieving maximum program size $SOURCES"))
 # remove after PIO Core 3.6 release
 elif set(["checkprogsize", "upload"]) & set(COMMAND_LINE_TARGETS):
     _update_max_upload_size(env)
@@ -276,10 +275,11 @@ target_size = env.AddPlatformTarget(
 )
 
 #
-# Target: Upload firmware or filesystem image
+# Target: Upload firmware or SPIFFS image
 #
 
 upload_protocol = env.subst("$UPLOAD_PROTOCOL")
+debug_tools = board.get("debug.tools", {})
 upload_actions = []
 
 # Compatibility with old OTA configurations
@@ -300,10 +300,10 @@ if upload_protocol == "espota":
             "using `upload_port` for build environment or use "
             "global `--upload-port` option.\n"
             "See https://docs.platformio.org/page/platforms/"
-            "espressif8266.html#over-the-air-ota-update\n")
+            "espressif32.html#over-the-air-ota-update\n")
     env.Replace(
         UPLOADER=join(
-            platform.get_package_dir("framework-arduinoespressif8266") or "",
+            platform.get_package_dir("framework-arduinoespressif32") or "",
             "tools", "espota.py"),
         UPLOADERFLAGS=["--debug", "--progress", "-i", "$UPLOAD_PORT"],
         UPLOADCMD='"$PYTHONEXE" "$UPLOADER" $UPLOADERFLAGS -f $SOURCE'
@@ -314,15 +314,20 @@ if upload_protocol == "espota":
 
 elif upload_protocol == "esptool":
     env.Replace(
-        UPLOADER=join(
-            platform.get_package_dir("tool-esptoolpy") or "", "esptool.py"),
+        UPLOADER="$ESPTOOL",
+#            platform.get_package_dir("tool-esptoolpy") or "", "esptool.py"),
         UPLOADERFLAGS=[
-            "--chip", "esp8266",
+            "--chip", mcu,
             "--port", '"$UPLOAD_PORT"',
             "--baud", "$UPLOAD_SPEED",
-            "write_flash"
+            "--before", "default_reset",
+            "--after", "hard_reset",
+            "write_flash", "-z",
+            "--flash_mode", "${__get_board_flash_mode(__env__)}",
+            "--flash_freq", "${__get_board_f_flash(__env__)}",
+            "--flash_size", "detect"
         ],
-        UPLOADCMD='"$PYTHONEXE" "$UPLOADER" $UPLOADERFLAGS 0x0 $SOURCE'
+        UPLOADCMD='"$PYTHONEXE" "$UPLOADER" $UPLOADERFLAGS 0x10000 $SOURCE'
     )
     for image in env.get("FLASH_EXTRA_IMAGES", []):
         env.Append(UPLOADERFLAGS=[image[0], env.subst(image[1])])
@@ -330,24 +335,80 @@ elif upload_protocol == "esptool":
     if "uploadfs" in COMMAND_LINE_TARGETS:
         env.Replace(
             UPLOADERFLAGS=[
-                "--chip", "esp8266",
+                "--chip", mcu,
                 "--port", '"$UPLOAD_PORT"',
                 "--baud", "$UPLOAD_SPEED",
-                "write_flash",
-                "$FS_START"
+                "--before", "default_reset",
+                "--after", "hard_reset",
+                "write_flash", "-z",
+                "--flash_mode", "$BOARD_FLASH_MODE",
+                "--flash_size", "detect",
+                "$SPIFFS_START"
             ],
             UPLOADCMD='"$PYTHONEXE" "$UPLOADER" $UPLOADERFLAGS $SOURCE',
         )
-
-    env.Prepend(
-        UPLOADERFLAGS=get_esptoolpy_reset_flags(env.subst("$UPLOAD_RESETMETHOD"))
-    )
 
     upload_actions = [
         env.VerboseAction(env.AutodetectUploadPort,
                           "Looking for upload port..."),
         env.VerboseAction("$UPLOADCMD", "Uploading $SOURCE")
     ]
+
+
+elif upload_protocol == "mbctool":
+    env.Replace(
+        UPLOADER=join(
+            platform.get_package_dir("tool-mbctool") or "", "bin", "mbctool"),
+        UPLOADERFLAGS=[
+            "--device", "esp",
+            "--speed", "$UPLOAD_SPEED",
+            "--port", '"$UPLOAD_PORT"',
+            "--upload",
+            "0x1000", join(
+                platform.get_package_dir("framework-arduino-mbcwb"),
+                "tools", "sdk", "bin", "bootloader_qio_80m.bin"),
+            "0x8000", join("$BUILD_DIR", "partitions.bin"),
+            "0xe000", join(
+                platform.get_package_dir("framework-arduino-mbcwb"),
+                "tools", "partitions", "boot_app0.bin"),
+            "0x10000", join("$BUILD_DIR", "${PROGNAME}.bin"),
+        ],
+        UPLOADCMD='"$UPLOADER" $UPLOADERFLAGS'
+    )
+    upload_actions = [
+        env.VerboseAction(env.AutodetectUploadPort,
+                          "Looking for upload port..."),
+        env.VerboseAction("$UPLOADCMD", "Uploading $SOURCE")
+    ]
+
+
+elif upload_protocol in debug_tools:
+    openocd_args = ["-d%d" % (2 if int(ARGUMENTS.get("PIOVERBOSE", 0)) else 1)]
+    openocd_args.extend(
+        debug_tools.get(upload_protocol).get("server").get("arguments", []))
+    openocd_args.extend([
+        "-c",
+        "program_esp32 {{$SOURCE}} %s verify" %
+        board.get("upload.offset_address", "0x10000")
+    ])
+    for image in env.get("FLASH_EXTRA_IMAGES", []):
+        openocd_args.extend([
+            "-c",
+            'program_esp32 {{%s}} %s verify' %
+            (_to_unix_slashes(image[1]), image[0])
+        ])
+    openocd_args.extend(["-c", "reset run; shutdown"])
+    openocd_args = [
+        f.replace(
+            "$PACKAGE_DIR",
+            _to_unix_slashes(
+                platform.get_package_dir("tool-openocd-esp32") or ""))
+        for f in openocd_args
+    ]
+    env.Replace(UPLOADER="openocd",
+                UPLOADERFLAGS=openocd_args,
+                UPLOADCMD="$UPLOADER $UPLOADERFLAGS")
+    upload_actions = [env.VerboseAction("$UPLOADCMD", "Uploading $SOURCE")]
 
 # custom upload tool
 elif upload_protocol == "custom":
