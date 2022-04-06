@@ -61,17 +61,17 @@ FRAMEWORK_NAME = "framework-"+env.subst('$PIOFRAMEWORK')
 FRAMEWORK_DIR = platform.get_package_dir(FRAMEWORK_NAME)
 assert FRAMEWORK_DIR and isdir(FRAMEWORK_DIR)
 
-if "arduino" in env.subst("$PIOFRAMEWORK"):
-    ARDUINO_FRAMEWORK_DIR = platform.get_package_dir("framework-arduinoespressif32")
-    # Possible package names in 'package@version' format is not compatible with CMake
-    if "@" in basename(ARDUINO_FRAMEWORK_DIR):
-        new_path = join(
-            dirname(ARDUINO_FRAMEWORK_DIR),
-            basename(ARDUINO_FRAMEWORK_DIR).replace("@", "-"),
-        )
-        rename(ARDUINO_FRAMEWORK_DIR, new_path)
-        ARDUINO_FRAMEWORK_DIR = new_path
-    assert ARDUINO_FRAMEWORK_DIR and isdir(ARDUINO_FRAMEWORK_DIR)
+#if "arduino" in env.subst("$PIOFRAMEWORK"):
+#    ARDUINO_FRAMEWORK_DIR = platform.get_package_dir("framework-arduinoespressif32")
+#    # Possible package names in 'package@version' format is not compatible with CMake
+#    if "@" in basename(ARDUINO_FRAMEWORK_DIR):
+#        new_path = join(
+#            dirname(ARDUINO_FRAMEWORK_DIR),
+#            basename(ARDUINO_FRAMEWORK_DIR).replace("@", "-"),
+#        )
+#        rename(ARDUINO_FRAMEWORK_DIR, new_path)
+#        ARDUINO_FRAMEWORK_DIR = new_path
+#    assert ARDUINO_FRAMEWORK_DIR and isdir(ARDUINO_FRAMEWORK_DIR)
 
 try:
     import future
@@ -944,8 +944,8 @@ if isfile(join(env.subst("$PROJECT_SRC_DIR"), "sdkconfig.h")):
 extra_components = [generate_default_component()]
 if env.subst("$PROJECT_SRC_DIR") != join(env.subst("$PROJECT_DIR"), "main"):
     extra_components.append(env.subst("$PROJECT_SRC_DIR"))
-    if "arduino" in env.subst("$PIOFRAMEWORK"):
-        extra_components.append(ARDUINO_FRAMEWORK_DIR)
+#    if "arduino" in env.subst("$PIOFRAMEWORK"):
+#        extra_components.append(ARDUINO_FRAMEWORK_DIR)
 
 print("Reading CMake configuration...")
 project_codemodel = get_cmake_code_model(
