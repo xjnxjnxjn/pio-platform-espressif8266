@@ -17,9 +17,8 @@
     "type": "git",
     "url": "https://github.com/xjnxjnxjn/platform-espressif8266.git"
   },
-  "version": "3.2.0-xjn.7",
+  "version": "3.2.0-xjn.8",
   "packageRepositories": [
-    "https://github.com/xjnxjnxjn/xtensa-lx106-elf.git/raw/master/manifest.json"
   ],
   "frameworks": {
     "esp8266-rtos-sdk": {
@@ -33,7 +32,7 @@
   "packages": {
     "toolchain-xtensa": {
       "type": "toolchain",
-      "version": "https://github.com/xjnxjnxjn/xtensa-lx106-elf.git"
+      "version": "https://github.com/xjnxjnxjn/pio-xtensa8266-5.2.0.git"
     },
     "framework-esp8266-rtos-sdk": {
       "type": "framework",
