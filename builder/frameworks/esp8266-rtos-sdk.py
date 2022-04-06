@@ -232,6 +232,10 @@ def get_cmake_code_model(src_dir, build_dir, extra_args=None):
 
 
 def populate_idf_env_vars(idf_env):
+
+    # populate IDF_PATH to os environment
+    environ["IDF_PATH"] = env.subst("$FRAMEWORK_DIR")
+
     idf_env["IDF_PATH"] = env.subst("$FRAMEWORK_DIR") #platform.get_package_dir("framework-espidf")
 
     additional_packages = [
