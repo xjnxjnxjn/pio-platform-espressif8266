@@ -174,3 +174,4 @@ for files_type in ("embed_txtfiles", "embed_files"):
     else:
         embed_files(files, files_type)
         remove_config_define(flags, files_type)
+        

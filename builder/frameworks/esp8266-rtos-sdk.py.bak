@@ -1129,3 +1129,4 @@ env["BUILDERS"]["ElfToBin"].action = action
 ulp_dir = join(env.subst("$PROJECT_DIR"), "ulp")
 if isdir(ulp_dir) and listdir(ulp_dir):
     env.SConscript("ulp.py", exports="env project_config")
+    
