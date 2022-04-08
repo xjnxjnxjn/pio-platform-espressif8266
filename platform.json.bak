@@ -32,8 +32,8 @@
   "packages": {
     "toolchain-xtensa": {
       "type": "toolchain",
-      "version": "https://github.com/xjnxjnxjn/pio-xtensa8266-5.2.0.git",
-      "_version": "https://github.com/xjnxjnxjn/pio-xtensa8266-8.4.0.git"
+      "_version": "https://github.com/xjnxjnxjn/pio-xtensa8266-5.2.0.git",
+      "version": "https://github.com/xjnxjnxjn/pio-xtensa8266-8.4.0.git"
     },
     "framework-esp8266-rtos-sdk": {
       "type": "framework",
