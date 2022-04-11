@@ -239,7 +239,7 @@ def populate_idf_env_vars(idf_env):
     idf_env["IDF_PATH"] = env.subst("$FRAMEWORK_DIR") #platform.get_package_dir("framework-espidf")
 
     additional_packages = [
-        join(platform.get_package_dir("toolchain-xtensa8266"), "bin"),
+        join(platform.get_package_dir("toolchain-xtensa-esp8266"), "bin"),
         platform.get_package_dir("tool-ninja"),
         join(platform.get_package_dir("tool-cmake"), "bin"),
     ]
@@ -514,7 +514,7 @@ def generate_project_ld_script(sdk_config, ignore_targets=None):
         "env_file": join("$BUILD_DIR", "config.env"),
         "libraries_list": libraries_list,
         "objdump": join(
-            platform.get_package_dir("toolchain-xtensa8266"),
+            platform.get_package_dir("toolchain-xtensa-esp8266"),
             "bin",
             env.subst("$CC").replace("-gcc", "-objdump"),
         ),
@@ -866,7 +866,7 @@ def build_sc_idf():
     if "windows" not in get_systype():
         return
     additional_packages = [
-        join(platform.get_package_dir("toolchain-xtensa8266"), "bin"),
+        join(platform.get_package_dir("toolchain-xtensa-esp8266"), "bin"),
         platform.get_package_dir("tool-ninja"),
         join(platform.get_package_dir("tool-cmake"), "bin"),
     ]
