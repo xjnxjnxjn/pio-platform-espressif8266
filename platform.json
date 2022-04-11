@@ -40,11 +40,9 @@
       "version": "https://github.com/xjnxjnxjn/ESP8266_RTOS_SDK.git"
     },
     "tool-cmake": {
-      "optional": true,
       "version": "~3.16.0"
     },
     "tool-ninja": {
-      "optional": true,
       "version": "^1.7.0"
     },
     "tool-mconf": {

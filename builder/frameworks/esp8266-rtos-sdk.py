@@ -319,6 +319,24 @@ def get_app_defines(app_config):
 
 
 def extract_link_args(target_config):
+    def _add_to_libpath(lib_path, link_args):
+        if lib_path not in link_args["LIBPATH"]:
+            # print("LIBPATH+=", lib_path)
+            link_args["LIBPATH"].append(lib_path)
+
+    def _add_archive(archive_path, link_args):
+        archive_name = basename(archive_path)
+        if archive_name not in link_args["LIBS"]:
+            _add_to_libpath(dirname(archive_path), link_args)
+            # print("LIBS+=", archive_name)
+            link_args["LIBS"].append(archive_name)
+
+    def _add_to_libdeps(archive_path, link_args):
+        name = basename(archive_path)
+        if name not in link_args["__LIB_DEPS"]:
+            # print("__LIB_DEPS+=", name)
+            link_args["__LIB_DEPS"].append(name)
+            
     link_args = {"LINKFLAGS": [], "LIBS": [], "LIBPATH": [], "__LIB_DEPS": []}
 
     for f in target_config.get("link", {}).get("commandFragments", []):
@@ -326,7 +344,9 @@ def extract_link_args(target_config):
         fragment_role = f.get("role", "").strip()
         if not fragment or not fragment_role:
             continue
+        # print("fragment.1=", fragment, " fragment_role=", fragment_role)
         args = click.parser.split_arg_string(fragment)
+        # print("args.1=", args)
         if fragment_role == "flags":
             link_args["LINKFLAGS"].extend(args)
         elif fragment_role == "libraries":
@@ -339,18 +359,24 @@ def extract_link_args(target_config):
             elif fragment.startswith("-") and not fragment.startswith("-l"):
                 # CMake mistakenly marks LINKFLAGS as libraries
                 link_args["LINKFLAGS"].extend(args)
-            elif isfile(fragment) and isabs(fragment):
-                # In case of precompiled archives from framework package
-                lib_path = dirname(fragment)
-                if lib_path not in link_args["LIBPATH"]:
-                    link_args["LIBPATH"].append(dirname(fragment))
-                link_args["LIBS"].extend(
-                    [basename(l) for l in args if l.endswith(".a")]
-                )
             elif fragment.endswith(".a"):
-                link_args["__LIB_DEPS"].extend(
-                    [basename(l) for l in args if l.endswith(".a")]
-                )
+                archive_path = fragment
+                # print("archive_path=", archive_path, "FRAMEWORK_DIR=", FRAMEWORK_DIR)
+                # process static archives
+                if archive_path.startswith(FRAMEWORK_DIR):
+                    # In case of precompiled archives from framework package
+                    _add_archive(archive_path, link_args)
+                else:
+                    # In case of archives within project
+                    if archive_path.startswith(".."):
+                        # Precompiled archives from project component
+                        _add_archive(
+                            os.path.normpath(os.path.join(BUILD_DIR, archive_path)),
+                            link_args,
+                        )
+                    else:
+                        # Internally built libraries used for dependency resolution
+                        _add_to_libdeps(archive_path, link_args)
 
     return link_args
 
@@ -433,7 +459,7 @@ def find_framework_service_files(search_path, sdk_config):
     result["lf_files"].extend([
             join(FRAMEWORK_DIR, "components", "esp8266", "ld", "esp8266_fragments.lf"),
             join(FRAMEWORK_DIR, "components", "esp8266", "ld", "esp8266_bss_fragments.lf"),
-#        join(FRAMEWORK_DIR, "components", "newlib", "newlib.lf")
+#            join(FRAMEWORK_DIR, "components", "newlib", "newlib.lf")
     ])
 
     if sdk_config.get("SPIRAM_CACHE_WORKAROUND", False):

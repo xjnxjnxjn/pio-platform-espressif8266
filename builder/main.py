@@ -136,33 +136,33 @@ FRAMEWORK_NAME = "framework-"+env.subst('$PIOFRAMEWORK')
 FRAMEWORK_DIR = platform.get_package_dir(FRAMEWORK_NAME)
 env.Replace(FRAMEWORK_DIR=FRAMEWORK_DIR)
 
+#+xjn
+#+	default 'mcu' from boards is esp8266,
+#+	but processor is lx106 so use 'lx106' 
+#+  for toolchain
+#+  
+_mcu = "lx106"
+
 env.Replace(
     __get_board_f_flash=_get_board_f_flash,
     __get_board_flash_mode=_get_board_flash_mode,
 
-#    AR="xtensa-%s-elf-ar" % mcu,
-#    AS="xtensa-%s-elf-as" % mcu,
-#    CC="xtensa-%s-elf-gcc" % mcu,
-#    CXX="xtensa-%s-elf-g++" % mcu,
-#    GDB="xtensa-%s-elf-gdb" % mcu,
-#    OBJCOPY=join(
-#        platform.get_package_dir("tool-esptoolpy") or "", "esptool.py"),
-#    RANLIB="xtensa-%s-elf-ranlib" % mcu,
-#    SIZETOOL="xtensa-%s-elf-size" % mcu,
+    AR          ="xtensa-%s-elf-ar"        % _mcu,
+    AS          ="xtensa-%s-elf-as"        % _mcu,
+    CC          ="xtensa-%s-elf-gcc"       % _mcu,
+    CXX         ="xtensa-%s-elf-g++"       % _mcu,
+    GDB         ="xtensa-%s-elf-gdb"       % _mcu,
+    OBJCOPY=join(
+        "$FRAMEWORK_DIR", "components", "esptool_py", "esptool", "esptool.py"), #"xtensa-lx106-elf-objcopy",
+    RANLIB      ="xtensa-%s-elf-ranlib"    % _mcu,
+    SIZETOOL    ="xtensa-%s-elf-size"      % _mcu,
+#    ESPTOOL=join(
+#       platform.get_package_dir("tool-esptoolpy"), "esptool.py"),
+    ESPTOOL=join(
+        "$FRAMEWORK_DIR", "components", "esptool_py", "esptool", "esptool.py"),
 
-    AR="xtensa-lx106-elf-ar",
-    AS="xtensa-lx106-elf-as",
-    CC="xtensa-lx106-elf-gcc",
-    CXX="xtensa-lx106-elf-g++",
-    GDB="xtensa-lx106-elf-gdb",
-#    OBJCOPY=join(platform.get_package_dir("tool-esptoolpy"), "esptool.py"),
-    OBJCOPY=join("$FRAMEWORK_DIR", "components", "esptool_py", "esptool", "esptool.py"), #"xtensa-lx106-elf-objcopy",
-    RANLIB="xtensa-lx106-elf-ranlib",
-    SIZETOOL="xtensa-lx106-elf-size",
-#    ESPTOOL=join(platform.get_package_dir("tool-esptoolpy"), "esptool.py"),
-    ESPTOOL=join("$FRAMEWORK_DIR", "components", "esptool_py", "esptool", "esptool.py"),
-
-    PARTTOOL=join("$FRAMEWORK_DIR", "components", "partition_table", "parttool.py"),
+    PARTTOOL=join(
+        "$FRAMEWORK_DIR", "components", "partition_table", "parttool.py"),
 
     ARFLAGS=["rc"],
 

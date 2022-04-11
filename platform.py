@@ -18,16 +18,19 @@ from platformio.util import get_systype
 class Espressif8266xjnPlatform(PlatformBase):
 
     def configure_default_packages(self, variables, targets):
-        if not variables.get("pioframework"):
-           self.packages['sdk-esp8266']['optional'] = False
-        if "buildfs" in targets:
-            self.packages['tool-mkspiffs']['optional'] = False
-        if "esp8266-rtos-sdk" in variables.get("pioframework", []):
-            for p in self.packages:
-                if p in ("tool-cmake", "tool-ninja"):
-                    self.packages[p]["optional"] = False
-                elif p in ("tool-mconf") and "windows" in get_systype():
-                    self.packages[p]['optional'] = False
+
+        #-xjn if not variables.get("pioframework"):
+        #-xjn    self.packages['sdk-esp8266']['optional'] = False
+        
+        #-xjn if "buildfs" in targets:
+        #-xjn     self.packages['tool-mkspiffs']['optional'] = False
+        
+        #-xjn if "esp8266-rtos-sdk" in variables.get("pioframework", []):
+        #-xjn     for p in self.packages:
+        #-xjn         if p in ("tool-cmake", "tool-ninja"):
+        #-xjn             self.packages[p]["optional"] = False
+        #-xjn         elif p in ("tool-mconf") and "windows" in get_systype():
+        #-xjn             self.packages[p]['optional'] = False
         return PlatformBase.configure_default_packages(
             self, variables, targets)    
 
