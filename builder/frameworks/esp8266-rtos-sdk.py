@@ -96,13 +96,14 @@ CMAKE_API_REPLY_PATH = join(".cmake", "api", "v1", "reply")
 
 
 #+xjn
-def get_toolchain_package_dir()
+def get_toolchain_package_dir():
     pkg_dir = platform.get_package_dir("toolchain-xtensa-esp8266")
-    if not pkg_dir
+    if not pkg_dir:
         pkg_dir = platform.get_package_dir("toolchain-xtensa")
-        return pkg_dir
+        
+    return pkg_dir
 
-
+        
 def get_project_lib_includes(env):
     project = ProjectAsLibBuilder(env, "$PROJECT_DIR")
     project.search_deps_recursive()
