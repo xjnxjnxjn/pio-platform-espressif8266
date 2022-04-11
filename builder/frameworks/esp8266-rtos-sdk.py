@@ -94,6 +94,15 @@ board = env.BoardConfig()
 BUILD_DIR = env.subst("$BUILD_DIR")
 CMAKE_API_REPLY_PATH = join(".cmake", "api", "v1", "reply")
 
+
+#+xjn
+def get_toolchain_package_dir()
+    pkg_dir = platform.get_package_dir("toolchain-xtensa-esp8266")
+    if not pkg_dir
+        pkg_dir = platform.get_package_dir("toolchain-xtensa")
+        return pkg_dir
+
+
 def get_project_lib_includes(env):
     project = ProjectAsLibBuilder(env, "$PROJECT_DIR")
     project.search_deps_recursive()
@@ -239,7 +248,7 @@ def populate_idf_env_vars(idf_env):
     idf_env["IDF_PATH"] = env.subst("$FRAMEWORK_DIR") #platform.get_package_dir("framework-espidf")
 
     additional_packages = [
-        join(platform.get_package_dir("toolchain-xtensa-esp8266"), "bin"),
+        join(get_toolchain_package_dir(), "bin"),
         platform.get_package_dir("tool-ninja"),
         join(platform.get_package_dir("tool-cmake"), "bin"),
     ]
@@ -514,7 +523,7 @@ def generate_project_ld_script(sdk_config, ignore_targets=None):
         "env_file": join("$BUILD_DIR", "config.env"),
         "libraries_list": libraries_list,
         "objdump": join(
-            platform.get_package_dir("toolchain-xtensa-esp8266"),
+            get_toolchain_package_dir(),
             "bin",
             env.subst("$CC").replace("-gcc", "-objdump"),
         ),
@@ -866,7 +875,7 @@ def build_sc_idf():
     if "windows" not in get_systype():
         return
     additional_packages = [
-        join(platform.get_package_dir("toolchain-xtensa-esp8266"), "bin"),
+        join(get_toolchain_package_dir(), "bin"),
         platform.get_package_dir("tool-ninja"),
         join(platform.get_package_dir("tool-cmake"), "bin"),
     ]
