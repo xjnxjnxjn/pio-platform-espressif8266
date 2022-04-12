@@ -35,17 +35,15 @@
       "owner": "platformio",
       "version": "~2.100300.210717"
     },
-    "toolchain-xtensa-esp8266@5.2.0": {
-	  "name": "toolchain-xtensa-esp8266",
+    "toolchain-xtensa-esp8266": {
+	  "name": "toolchain-xtensa-esp8266@5.2.0",
       "type": "toolchain",
-      "optional": true,
       "version": "https://github.com/xjnxjnxjn/pio-xtensa8266-5.2.0.git"
     },
     "toolchain-xtensa-esp8266@8.4.0": {
 	  "name": "toolchain-xtensa-esp8266",
       "type": "toolchain",
 	  "owner": "xjnxjnxjn",
-      "optional": true,
       "version": "https://github.com/xjnxjnxjn/pio-xtensa8266-8.4.0.git"
     },
     "framework-esp8266-rtos-sdk": {
