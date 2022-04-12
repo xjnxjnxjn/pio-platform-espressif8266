@@ -30,19 +30,20 @@
   "packages": {
     ".toolchain-xtensa": {
 	  ".info": "gcc 10.3 not supported",
-      "optional": true,
       "type": "toolchain",
       "owner": "platformio",
+      "optional": true,
       "version": "~2.100300.210717"
     },
     "toolchain-xtensa-esp8266": {
-	  "name": "toolchain-xtensa-esp8266@5.2.0",
       "type": "toolchain",
+	  "name": "toolchain-xtensa-esp8266@5.2.0",
+	  "owner": "xjnxjnxjn",
       "version": "https://github.com/xjnxjnxjn/pio-xtensa8266-5.2.0.git"
     },
-    "toolchain-xtensa-esp8266@8.4.0": {
-	  "name": "toolchain-xtensa-esp8266",
+    "toolchain-xtensa-esp8266": {
       "type": "toolchain",
+	  "name": "toolchain-xtensa-esp8266@8.4.0",
 	  "owner": "xjnxjnxjn",
       "version": "https://github.com/xjnxjnxjn/pio-xtensa8266-8.4.0.git"
     },
