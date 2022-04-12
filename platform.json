@@ -27,10 +27,9 @@
     "Xtensa",
     "106Micro"
   ],
-  "packageRepositories": [
-  ],
   "packages": {
     ".toolchain-xtensa": {
+	  ".info": "gcc 10.3 not supported",
       "optional": true,
       "type": "toolchain",
       "owner": "platformio",
@@ -38,10 +37,14 @@
     },
     "toolchain-xtensa-esp8266@5.2.0": {
       "type": "toolchain",
+      "owner": "xjnxjnxjn",
+      "optional": true,
       "version": "https://github.com/xjnxjnxjn/pio-xtensa8266-5.2.0.git"
     },
     "toolchain-xtensa-esp8266@8.4.0": {
       "type": "toolchain",
+      "owner": "xjnxjnxjn",
+      "optional": true,
       "version": "https://github.com/xjnxjnxjn/pio-xtensa8266-8.4.0.git"
     },
     "framework-esp8266-rtos-sdk": {
