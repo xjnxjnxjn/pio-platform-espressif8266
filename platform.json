@@ -31,6 +31,7 @@
   },
   "packages": {
     ".toolchain-xtensa": {
+      "optional": true,
       "type": "toolchain",
       "owner": "platformio",
       "version": "~2.100300.210717"
