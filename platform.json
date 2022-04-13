@@ -58,10 +58,8 @@
       "version": "^1.7.0"
     },
     "tool-mconf": {
-      "optional": true,
       "version": "~1.4060000.0"
-    },
-    
+    },    
     "tool-esptool": {
       "type": "uploader",
       "owner": "platformio",
