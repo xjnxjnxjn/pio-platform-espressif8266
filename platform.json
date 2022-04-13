@@ -2,11 +2,11 @@
   "name": "espressif8266-xjn",
   "title": "Espressif 8266",
   "description": "Espressif Systems is a privately held fabless semiconductor company. They provide wireless communications and Wi-Fi chips which are widely used in mobile devices and the Internet of Things applications.",
-  "version": "3.2.0-xjn.8",
+  "version": "3.2.0-xjn.9",
   "homepage": "https://espressif.com/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/xjnxjnxjn/platform-espressif8266.git"
+    "url": "https://github.com/xjnxjnxjn/pio-platform-espressif8266.git"
   },
   "license": "Apache-2.0",
   "frameworks": {
@@ -37,15 +37,13 @@
     },
     "toolchain-xtensa-esp8266": {
       "type": "toolchain",
-	  "name": "toolchain-xtensa-esp8266@5.2.0",
-	  "owner": "xjnxjnxjn",
-      "version": "https://github.com/xjnxjnxjn/pio-xtensa8266-5.2.0.git"
+      "name": "toolchain-xtensa-esp8266@5.2.0",
+      "version": "https://github.com/xjnxjnxjn/pio-toolchain-xtensa8266-5.2.0.git"
     },
     "toolchain-xtensa-esp8266": {
       "type": "toolchain",
-	  "name": "toolchain-xtensa-esp8266@8.4.0",
-	  "owner": "xjnxjnxjn",
-      "version": "https://github.com/xjnxjnxjn/pio-xtensa8266-8.4.0.git"
+      "name": "toolchain-xtensa-esp8266@8.4.0",
+      "version": "https://github.com/xjnxjnxjn/pio-toolchain-xtensa8266-8.4.0.git"
     },
     "framework-esp8266-rtos-sdk": {
       "type": "framework",
